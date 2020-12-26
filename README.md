@@ -18,7 +18,7 @@ A Custom AWS Config Rule continuously monitors and evaluates the CloudKnox Privi
 
 ## Solution Design
 
-![](images/aws-cloudknox-config-arch.png)
+![](images/CURAutomatedIngestionandUpdate.png)
 
 ## How To Install
 
