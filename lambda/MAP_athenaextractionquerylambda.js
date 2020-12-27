@@ -5,11 +5,7 @@ const util = require('util');
 // Key MUST match the top level folder
 // Format: <owner account name> - <Canonical ID> - <sub account name> - <canonical ID>
 // This will give owner full permission & sub account read only permission
-var permissions = new Array();
-var permissions = {
-    '<folder1>': ['<owner acct name>','<Owner Canonical ID>','<sub account name>','<Sub Acct Canonical ID>'],
-    '<folder2>': ['<owner acct name>','<Owner Canonical ID>','<sub account name>','<Sub Acct Canonical ID>']
-};
+
 
 // Main Loop
 exports.handler = function(event, context, callback) {
@@ -27,6 +23,11 @@ exports.handler = function(event, context, callback) {
 
         // Gets the top level folder, which is the key for the permissions array        
         var folderID = srcKey.split("/")[0];
+
+        var folderkey = process.env.outputfolder;
+        var permissions = {
+            folderkey: [process.env.payer_account_id, process.env.canonical_id_payer, process.env.linked_account_id, process.env.canonical_id_linked]
+        };
 
         // Define the object permissions, using the permissions array
         var params =

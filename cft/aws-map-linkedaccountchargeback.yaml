@@ -23,19 +23,19 @@ Parameters:
   sourcebucket:
     Description: S3 Bucket that contains AWS Lambda source
     Type: String
-    Default: 's3-maplinkedaccounts-<AWS::AccountId>-<AWS::Region>'
+    Default: 's3-maplinkedaccountlambdas-<AWS::AccountId>-<AWS::Region>'
     MinLength: '1'
     MaxLength: '255'
   s3outputbucketname:
     Description: >-
-      S3 Output Bucket Name that contains the extracted parquet files for the linked account
+      S3 Output Bucket Name that contains the extracted parquet files for the linked account.
     Type: String
-    Default: "s3-subaccount-migratereport-1"
+    Default: "s3-map-linkedaccount"
   outputfolder:
     Description: >-
       Sub folder in S3 Output Bucket 
     Type: String
-    Default: "map-migrate-subaccount"
+    Default: "map-migrate-linkedaccount"
   map_migrated_db:
     Description: >-
       Athena DB Name for the MAP Reports delivered in the payer account
@@ -68,14 +68,15 @@ Parameters:
     Default: "875914227481"
   canonical_id_payer:
     Description: >-
-      Name of the Glue Crawler that creates MAP reports in payer account
+      Canonical ID of the payer account
     Type: String
     Default: "ec3615d883890ff9f356436fdfff1d01ed7a7ecac09dbf300e7069263a7e6304"
   canonical_id_linked:
     Description: >-
-      Name of the Glue Crawler that creates MAP reports in payer account
+      Canonical ID of the linked account
     Type: String
     Default: "f250446b450b9c8aab8677d65b4b9c655b2c50ef5ff1c98552df4d90eba2a1c8"
+
 
 Resources:
 
@@ -83,7 +84,7 @@ Resources:
   MAPAthenaExtractionQueryLambda:
     Type: 'AWS::Lambda::Function'
     DependsOn:
-      - S3OutputBucketForLinkedAccount
+      - CreateS3OutputBucketNotification
     Properties:
       FunctionName: !Join 
         - ''
@@ -135,8 +136,8 @@ Resources:
                   - 's3:*'
                 Effect: Allow
                 Resource:
-                  - !Sub arn:${AWS::Partition}:s3:::${s3outputbucketname}
-                  - !Sub arn:${AWS::Partition}:s3:::${s3outputbucketname}/*
+                  - !Sub arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}
+                  - !Sub arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}/*
               - Sid: '2'
                 Action:
                   - 'logs:CreateLogGroup'
@@ -228,7 +229,6 @@ Resources:
   S3OutputBucketNotificationLambda:
     Type: 'AWS::Lambda::Function'
     DependsOn:
-      - MAPAthenaExtractionQueryLambda
       - S3OutputBucketPermissionsLambda
       - S3EventNotificationLambdaPermission
     Properties:
@@ -277,8 +277,8 @@ Resources:
     Properties:
       ServiceToken: !GetAtt S3OutputBucketNotificationLambda.Arn
       TargetLambdaArn: !GetAtt S3OutputBucketPermissionsLambda.Arn
-      BucketName: !Ref s3outputbucketname
-      FolderName: !Sub "${s3outputbucketname}/${outputfolder}"
+      BucketName: !Sub "${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}"
+      FolderName: !Sub "${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}/${outputfolder}"
 
   S3EventNotificationLambdaPermission:
     Type: AWS::Lambda::Permission
@@ -287,7 +287,7 @@ Resources:
       FunctionName: !GetAtt S3OutputBucketPermissionsLambda.Arn
       Principal: 's3.amazonaws.com'
       SourceAccount: !Ref AWS::AccountId
-      SourceArn: !Sub 'arn:${AWS::Partition}:s3:::${outputbucketname}'
+      SourceArn: !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}'
      
   S3OutputBucketNotificationLambdaRole:
     Type: 'AWS::IAM::Role'
@@ -316,7 +316,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 's3:PutBucketNotification'
-                Resource: !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}'
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}'
 
 
 #MAP S3 Output Bucket Permissions Lambda
@@ -345,7 +345,8 @@ Resources:
           payer_account_id: !Ref AWS::AccountId
           linked_account_id: !Ref linked_account_id
           canonical_id_payer: !Ref canonical_id_payer
-          canonical_id_linked: !Ref  canonical_id_linked
+          canonical_id_linked: !Ref canonical_id_linked
+          outputfolder: !Ref outputfolder
       MemorySize: '256'
       Runtime: nodejs12.x
       Timeout: 300
@@ -373,8 +374,8 @@ Resources:
                   - 's3:*'
                 Effect: Allow
                 Resource:
-                  - !Sub arn:${AWS::Partition}:s3:::${sourcebucket}
-                  - !Sub arn:${AWS::Partition}:s3:::${sourcebucket}/*
+                  - !Sub arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}
+                  - !Sub arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}/*
               - Sid: '2'
                 Action:
                   - 'logs:CreateLogGroup'

@@ -1,5 +1,6 @@
 import boto3
 import json
+import os
 import datetime
 import time
 from dateutil.relativedelta import relativedelta
@@ -7,16 +8,16 @@ from dateutil.relativedelta import relativedelta
 
 def lambda_handler(event, context):
     
-    s3outputbucketname = event['s3outputbucketname']
-    outputfolder = event['outputfolder'] + '/'
+    s3outputbucketname = os.environ['s3outputbucketname']
+    outputfolder = os.environ['outputfolder'] + '/'
    
-    map_migrated_db = event['map_migrated_db']
-    map_migrated_table = event['map_migrated_table']
-    extraction_query_name = event['extraction_query_name']
-    athena_output_location = event['athena_output_location']
+    map_migrated_db = os.environ['map_migrated_db']
+    map_migrated_table = os.environ['map_migrated_table']
+    extraction_query_name = os.environ['extraction_query_name']
+    athena_output_location = os.environ['athena_output_location']
     
     #Check if output folder exists. If it doesn't exist then create an output folder. If it exists, then proceed to empty
-    create_s3outputbucketfolder(outputfolder)
+    create_s3outputbucketfolder(s3outputbucketname, outputfolder)
     
     # Empty the existing MAP query output bucket for linked accounts
     empty_s3outputbucket(s3outputbucketname, outputfolder)
