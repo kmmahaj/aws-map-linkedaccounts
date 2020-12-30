@@ -3,18 +3,17 @@ Description: Amazon CloudWatch Events for AWS Glue Crawler, AWS Lambda for autom
 AWSTemplateFormatVersion: "2010-09-09"
 
 # Provisions MAP Reports for Linked Accounts
+#### STEP 1:
 ##  1. Provisions Output S3 Bucket that contains Parquet files for MAP Linked Accounts
 #   2. Provisions AWS Lambda for cross account permission on Output S3 Bucket objects
 #   3. Provisions S3 Event Notification on Output S3 Bucket that triggers the 
-##     AWS Lambda for Cross Account permissions 
-#### 
+##     AWS Lambda above for Cross Account permissions 
+#### STEP 2: 
 #   4. Provisions AWS Lambda to execute Athena MAP Extraction Query for Linked Accounts
-#   5. Provisions CWE for Glue Crawler event notification that triggers an 
-##     AWS Lambda target for Athena MAP Extraction Query
-
-
-
-
+#   5. Provisions CWE for Glue Crawler event notification that triggers the 
+##     AWS Lambda above for Athena MAP Extraction Query
+#
+#
 # @kmmahaj
 #
 ## License:
@@ -105,7 +104,7 @@ Resources:
       Handler: MAP_athenaextractionquerylambda.lambda_handler
       Environment:
         Variables:
-          s3outputbucketname: !Ref s3outputbucketname
+          s3outputbucketname: !Sub "${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}"
           outputfolder: !Ref outputfolder
           map_migrated_db: !Ref mapmigrateddb
           map_migrated_table: !Ref mapmigratedtable
@@ -329,25 +328,86 @@ Resources:
           - s3outoutbucketpermissionslambda
       Role: !GetAtt S3OutputBucketPermissionsLambdaRole.Arn
       Code:
-        S3Bucket: !Ref sourcebucket
-        S3Key: !Join 
-          - ''
-          - - MAP_s3outputbucketpermissionslambda
-            - /
-            - MAP_s3outputbucketpermissionslambda
-            - .zip
-      Description: MAP S3 Output Bucket Permissions Lambda
-      Handler: MAP_s3outoutbucketpermissionslambda.lambda_handler
+        ZipFile: >
+          const AWS = require('aws-sdk');
+          const util = require('util');
+          // Permissions for the new objects
+          // Key MUST match the top level folder
+          // Format: <owner account name> - <Canonical ID> - <sub account name> - <canonical ID>
+          // This will give owner full permission & sub account read only permission
+          // Main Loop
+          exports.handler = function(event, context, callback) {
+              // If its an object delete, do nothing
+              if (event.RequestType === 'Delete') {
+              }
+              else // Its an object put
+              {
+                  // Get the source bucket from the S3 event
+                  var srcBucket = event.Records[0].s3.bucket.name;
+                  // Object key may have spaces or unicode non-ASCII characters, decode it
+                  var srcKey = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));  
+                  // Gets the top level folder, which is the key for the permissions array        
+                  var folderID = srcKey.split("/")[0];
+                  var folderkey = process.env.outputfolder;
+                  var permissions = {
+                      folderkey: [process.env.payeraccountid, process.env.canonicalidpayer, process.env.linkedaccountid, process.env.canonicalidlinked]
+                  };
+                  // Define the object permissions, using the permissions array
+                  var params =
+                  {
+                      Bucket: srcBucket,
+                      Key: srcKey,
+                      AccessControlPolicy:
+                      {
+                          'Owner':
+                          {
+                              'DisplayName': permissions[folderID][0],
+                              'ID': permissions[folderID][1]
+                          },
+                          'Grants': 
+                          [
+                              {
+                                  'Grantee': 
+                                  {
+                                      'Type': 'CanonicalUser',
+                                      'DisplayName': permissions[folderID][0],
+                                      'ID': permissions[folderID][1]
+                                  },
+                                  'Permission': 'FULL_CONTROL'
+                              },
+                              {
+                                  'Grantee': {
+                                      'Type': 'CanonicalUser',
+                                      'DisplayName': permissions[folderID][2],
+                                      'ID': permissions[folderID][3]
+                                      },
+                                  'Permission': 'READ'
+                              },
+                          ]
+                      }
+                  };
+                  // get reference to S3 client 
+                  var s3 = new AWS.S3();
+                  // Put the ACL on the object
+                  s3.putObjectAcl(params, function(err, data) {
+                      if (err) console.log(err, err.stack); // an error occurred
+                      else     console.log(data);           // successful response
+                  });
+              }
+           };
+      Handler: 'index.handler'
       Environment:
         Variables:
-          payer_account_id: !Ref AWS::AccountId
-          linked_account_id: !Ref linkedaccountid
-          canonical_id_payer: !Ref canonicalidpayer
-          canonical_id_linked: !Ref canonicalidlinked
+          payeraccountid: !Ref AWS::AccountId
+          linkedaccountid: !Ref linkedaccountid
+          canonicalidpayer: !Ref canonicalidpayer
+          canonicalidlinked: !Ref canonicalidlinked
           outputfolder: !Ref outputfolder
       MemorySize: '256'
       Runtime: nodejs12.x
+      ReservedConcurrentExecutions: 1
       Timeout: 300
+
 
 #MAP S3 Output Bucket Permissions Lambda Role
   S3OutputBucketPermissionsLambdaRole:
