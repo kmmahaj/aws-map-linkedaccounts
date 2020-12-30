@@ -26,7 +26,7 @@ exports.handler = function(event, context, callback) {
 
         var folderkey = process.env.outputfolder;
         var permissions = {
-            folderkey: [process.env.payer_account_id, process.env.canonical_id_payer, process.env.linked_account_id, process.env.canonical_id_linked]
+            folderkey: [process.env.payeraccountid, process.env.canonicalidpayer, process.env.linkedaccountid, process.env.canonicalidlinked]
         };
 
         // Define the object permissions, using the permissions array
