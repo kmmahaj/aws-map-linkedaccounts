@@ -29,7 +29,7 @@ Parameters:
     MaxLength: '255'
   s3outputbucketname:
     Description: >-
-      S3 Output Bucket Name that contains the extracted parquet files for the linked account.
+      S3 Output Bucket Name that contains the extracted parquet files for the linked account. 
     Type: String
     Default: "s3-map-linkedaccount"
   outputfolder:
@@ -51,7 +51,7 @@ Parameters:
     Description: >-
        Name of the saved Athena extraction query
     Type: String
-    Default: "subaccountquery"
+    Default: "maplinkedquery"
   athenaoutputlocation:
     Description: >-
       Athena results location from Athena settings
@@ -192,6 +192,31 @@ Resources:
           - "PayerGlueCrawlerRule"
           - "Arn"
 
+  PayerScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Name: PayerScheduledRule
+      Description: "Payer Scheduled CWE Rule that triggers the MAPAthenaExtractionQuery Lambda"
+      State: "ENABLED"
+      ScheduleExpression: "rate(5 minutes)"
+      Targets:
+      - Arn: !GetAtt "MAPAthenaExtractionQueryLambda.Arn"
+        Id: IDMAPAthenaExtractionQuery
+
+
+  PayerScheduledRuleLambdaPermission: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "MAPAthenaExtractionQueryLambda"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "PayerScheduledRule"
+          - "Arn"
+
+
 #--------------------------------------------------------------------------------------------
 # S3 Output Bucket for Linked Accounts. 
 # S3 Bucket Event Trigger for Cross Account Permissions Lambda
@@ -252,8 +277,7 @@ Resources:
             if (event.RequestType !== 'Delete') {
               newNotificationConfig.LambdaFunctionConfigurations = [{
                 Events: [ 's3:ObjectCreated:*' ],
-                LambdaFunctionArn: event.ResourceProperties.TargetLambdaArn || 'missing arn',
-                Filter: { Key: { FilterRules: [ { Name: 'prefix', Value: event.ResourceProperties.FolderName } ] } }
+                LambdaFunctionArn: event.ResourceProperties.TargetLambdaArn
               }];
             }
             putConfigRequest(newNotificationConfig).then(function(result) {
@@ -325,33 +349,23 @@ Resources:
       FunctionName: !Join 
         - ''
         - - MAP_
-          - s3outoutbucketpermissionslambda
+          - s3outputbucketpermissionslambda
       Role: !GetAtt S3OutputBucketPermissionsLambdaRole.Arn
       Code:
         ZipFile: >
           const AWS = require('aws-sdk');
           const util = require('util');
-          // Permissions for the new objects
-          // Key MUST match the top level folder
-          // Format: <owner account name> - <Canonical ID> - <sub account name> - <canonical ID>
-          // This will give owner full permission & sub account read only permission
-          // Main Loop
           exports.handler = function(event, context, callback) {
+              
               // If its an object delete, do nothing
               if (event.RequestType === 'Delete') {
               }
               else // Its an object put
               {
                   // Get the source bucket from the S3 event
-                  var srcBucket = event.Records[0].s3.bucket.name;
+                  var srcBucket = event.Records[0].s3.bucket.name;      
                   // Object key may have spaces or unicode non-ASCII characters, decode it
                   var srcKey = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));  
-                  // Gets the top level folder, which is the key for the permissions array        
-                  var folderID = srcKey.split("/")[0];
-                  var folderkey = process.env.outputfolder;
-                  var permissions = {
-                      folderkey: [process.env.payeraccountid, process.env.canonicalidpayer, process.env.linkedaccountid, process.env.canonicalidlinked]
-                  };
                   // Define the object permissions, using the permissions array
                   var params =
                   {
@@ -361,8 +375,8 @@ Resources:
                       {
                           'Owner':
                           {
-                              'DisplayName': permissions[folderID][0],
-                              'ID': permissions[folderID][1]
+                              'DisplayName': process.env.payeraccountid.toString(),
+                              'ID': process.env.canonicalidpayer.toString()
                           },
                           'Grants': 
                           [
@@ -370,22 +384,23 @@ Resources:
                                   'Grantee': 
                                   {
                                       'Type': 'CanonicalUser',
-                                      'DisplayName': permissions[folderID][0],
-                                      'ID': permissions[folderID][1]
+                                      'DisplayName': process.env.payeraccountid.toString(),
+                                      'ID': process.env.canonicalidpayer.toString()
                                   },
                                   'Permission': 'FULL_CONTROL'
                               },
                               {
                                   'Grantee': {
                                       'Type': 'CanonicalUser',
-                                      'DisplayName': permissions[folderID][2],
-                                      'ID': permissions[folderID][3]
+                                      'DisplayName': process.env.linkedaccountid.toString(),
+                                      'ID': process.env.canonicalidlinked.toString()
                                       },
                                   'Permission': 'READ'
                               },
                           ]
                       }
                   };
+
                   // get reference to S3 client 
                   var s3 = new AWS.S3();
                   // Put the ACL on the object
