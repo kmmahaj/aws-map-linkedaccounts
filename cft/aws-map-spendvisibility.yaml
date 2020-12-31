@@ -2,7 +2,7 @@
 Description: Amazon CloudWatch Events for AWS Glue Crawler, AWS Lambda for automating Athena Queries
 AWSTemplateFormatVersion: "2010-09-09"
 
-# Provisions MAP Reports for Linked Accounts
+# Provides MAP Spend Visibility for Linked Accounts
 #### STEP 1:
 ##  1. Provisions Output S3 Bucket that contains Parquet files for MAP Linked Accounts
 #   2. Provisions AWS Lambda for cross account permission on Output S3 Bucket objects
