@@ -317,6 +317,8 @@ Resources:
      
   CreateS3OutputBucketNotification:
     Type: 'Custom::CreateS3OutputBucketNotification'
+    DependsOn:
+      - CreateS3OutputBucketPolicy
     Properties:
       ServiceToken: !GetAtt S3OutputBucketNotificationLambda.Arn
       TargetLambdaArn: !GetAtt S3OutputBucketPermissionsLambda.Arn
@@ -332,6 +334,129 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}'
      
+  CreateS3OutputBucketPolicy:
+    Type: 'Custom::CreateS3OutputBucketPolicy'
+    Properties:
+      ServiceToken: !GetAtt S3OutputBucketPolicyLambda.Arn
+      BucketName: !Sub "${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}"
+      FolderName: !Ref outputfolder
+
+  S3OutputBucketPolicyLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: python3.7
+      MemorySize: 256
+      Role: !GetAtt 'S3OutputBucketNotificationLambdaRole.Arn'
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import botocore
+          import os
+          import cfnresponse
+          import logging
+          from botocore.vendored import requests
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+              
+          def handler(event, context):
+              foldername = event['ResourceProperties']['FolderName'] + + '/'
+              bucketname = event['ResourceProperties']['BucketName']
+              logger.info('EVENT Received: {}'.format(event))
+              eventType = event['RequestType']
+              if eventType != 'Delete':
+                  logger.info('Event = ' + event['RequestType'])
+                  s3 = boto3.client('s3')
+                  response_folder = s3.put_object(
+                                Bucket=bucketname, 
+                                Key=outputfolder
+                  )
+                  response_acl = s3.put_bucket_acl(
+                     AccessControlPolicy={
+                          'Owner':
+                          {
+                              'DisplayName': process.env.payeraccountid.toString(),
+                              'ID': process.env.canonicalidpayer.toString()
+                          },
+                          'Grants': 
+                          [
+                              {
+                                  'Grantee': 
+                                  {
+                                      'Type': 'CanonicalUser',
+                                      'DisplayName': process.env.payeraccountid.toString(),
+                                      'ID': process.env.canonicalidpayer.toString()
+                                  },
+                                  'Permission': 'FULL_CONTROL'
+                              },
+                              {
+                                  'Grantee': {
+                                      'Type': 'CanonicalUser',
+                                      'DisplayName': process.env.linkedaccountid.toString(),
+                                      'ID': process.env.canonicalidlinked.toString()
+                                      },
+                                  'Permission': 'READ'
+                              },
+                          ]
+                      },
+                      Bucket=bucketname,
+                  )
+  
+                  cfnsend(event, context, 'SUCCESS', response_data)
+                  return "Success"
+
+              else:
+                  logger.info(f'Request Type is Delete; unsupported')
+                  cfnsend(event, context, 'SUCCESS', response_data)
+                  return event
+
+              cfnsend(event, context, 'SUCCESS', response_data)
+              return "Success"
+
+     
+          def cfnsend(event, context, responseStatus, responseData, reason=None):
+              if 'ResponseURL' in event:
+                  responseUrl = event['ResponseURL']
+                  # Build out the response json
+                  responseBody = {}
+                  responseBody['Status'] = responseStatus
+                  responseBody['Reason'] = reason or 'CWL Log Stream =' + context.log_stream_name
+                  responseBody['PhysicalResourceId'] = context.log_stream_name
+                  responseBody['StackId'] = event['StackId']
+                  responseBody['RequestId'] = event['RequestId']
+                  responseBody['LogicalResourceId'] = event['LogicalResourceId']
+                  responseBody['Data'] = responseData
+                  json_responseBody = json.dumps(responseBody)
+
+                  logger.info(f'Response body: + {json_responseBody}')
+
+                  headers = {
+                      'content-type': '',
+                      'content-length': str(len(json_responseBody))
+                  }
+                  # Send response back to CFN
+                  try:
+                      response = requests.put(responseUrl,
+                                              data=json_responseBody,
+                                              headers=headers)
+                      logger.info(f'Status code: {response.reason}')
+                  except Exception as e:
+                      logger.info(f'send(..) failed executing requests.put(..):  {str(e)}')
+  
+
+  S3OutputBucketPolicyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt S3OutputBucketPolicyLambda.Arn
+      Principal: 's3.amazonaws.com'
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}'
+
+
   S3OutputBucketNotificationLambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
