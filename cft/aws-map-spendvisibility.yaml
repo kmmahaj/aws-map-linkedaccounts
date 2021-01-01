@@ -317,6 +317,8 @@ Resources:
      
   CreateS3OutputBucketNotification:
     Type: 'Custom::CreateS3OutputBucketNotification'
+    DependsOn:
+      - S3OutputBucketPolicy
     Properties:
       ServiceToken: !GetAtt S3OutputBucketNotificationLambda.Arn
       TargetLambdaArn: !GetAtt S3OutputBucketPermissionsLambda.Arn
