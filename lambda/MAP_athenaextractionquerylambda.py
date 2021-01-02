@@ -52,6 +52,7 @@ def empty_s3outputbucket(s3outputbucketname, outputfolder):
             Bucket=s3outputbucketname,
             Prefix=outputfolder
     )
+    print("keycount in emptybucketfn: " + str(response['KeyCount']) )
     
     if (response['KeyCount'] > 0):
         s3objects = response['Contents']
@@ -96,6 +97,17 @@ def run_athenaextractionquery(map_migrated_db, map_migrated_table, extraction_qu
                     }
                 }
             )
+            
+            response_exec = client.get_query_execution(
+            QueryExecutionId=executionID_drop['QueryExecutionId']
+            )['QueryExecution']['Status']['State']
+            while response_exec in ['QUEUED','RUNNING']:
+                time.sleep(30)
+                response_exec = client.get_query_execution(
+                QueryExecutionId=executionID_drop['QueryExecutionId']
+                )['QueryExecution']['Status']['State']
+                
+            
             print("completed drop_query_string: " + drop_query_string )
             
             executionID_create = client.start_query_execution(
@@ -108,4 +120,14 @@ def run_athenaextractionquery(map_migrated_db, map_migrated_table, extraction_qu
                 }
             )
             print("completed create_query_string: " + query_string)
+            
+            response_exec_2 = client.get_query_execution(
+            QueryExecutionId=executionID_create['QueryExecutionId']
+            )['QueryExecution']['Status']['State']
+            while response_exec_2 in ['QUEUED','RUNNING']:
+                time.sleep(30)
+                response_exec_2 = client.get_query_execution(
+                QueryExecutionId=executionID_create['QueryExecutionId']
+                )['QueryExecution']['Status']['State']
+                
             break

@@ -265,7 +265,7 @@ Resources:
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}'
               - !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}/*'
-              - !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}/{outputfolder}/*'
+              - !Sub 'arn:${AWS::Partition}:s3:::${s3outputbucketname}-${AWS::AccountId}-${AWS::Region}/${outputfolder}/*'
             Principal:
               AWS:
               - !Sub 'arn:${AWS::Partition}:iam::${linkedaccountid}:root'
