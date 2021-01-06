@@ -34,7 +34,7 @@ a.	 The AWS Glue Crawler creates an Athena database and table in the member acco
 
 2 step install:
 
-1.	Payer Account - Launch the **aws-map-spendvisibility.yml** templa.ymlte
+1.	Payer Account - Launch the **aws-map-spendvisibility.yml** template
 	1.	Provisions steps 1-3 described above in the 'How it Works section
 
 2.	Member Account - Launch the **aws-map-linkedaccountcrawler.yml** template
