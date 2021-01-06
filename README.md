@@ -1,9 +1,9 @@
 <p align="center">
 </p>
 
-# Automating spend tracking for MAP member accounts
+# Automating spend tracking for AWS MAP member accounts
 
-Provides fully automated tracking to member account owners on both their spend and credits for their MAP tagged resources
+Provides fully automated tracking to member account owners on both their spend and credits for their AWS MAP tagged resources
 
 
 ## How it Works
