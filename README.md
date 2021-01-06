@@ -1,19 +1,22 @@
 <p align="center">
 </p>
 
-# Automating spend and credits tracking for member accounts in the AWS Migration Acceleration Program (MAP) 
+# Automating spend tracking for MAP member accounts
 
 Provides fully automated tracking to member account owners on both their spend and credits for their MAP tagged resources
 
 
 ## How it Works
 
-1.	A custom AWS Config Rule uses the AWS Config Rule Development Kit and CloudKnox REST API to record and evaluate a CloudKnox PCI (Privilege Creep Index) score for every AWS IAM user in your AWS account
-2.	If the CloudKnox PCI score is high for that AWS IAM user then AWS Config triggers an automated remediation in real time using AWS Systems Manager Automation
-3.	The AWS Systems Manager Automation invokes an AWS Lambda function for rightsizing the permissions of an AWS IAM user with a high Privileged Creep Index (PCI) score
-4.	The AWS Lambda function invokes the CloudKnox Just Enough Privileges (JEP) Controller REST API to retrieve the rightsized IAM policy for the user based on the user’s previous activity
-5.	The AWS Lambda function provisions the retrieved AWS IAM policy to the user and rightsizes the user’s permissions
-
+1. Provisions a AWS CloudWatch Events Rule in the payer account that is triggered based on the successful completion of the AWS Glue Crawler.
+a.	 The Crawler runs in the payer account each time a MAP CUR report is delivered there and creates/updates the Athena database and table for the MAP CUR report
+2. Provisions an output results S3 bucket in the payer account with an attached event notification to assign view permissions to objects in the S3 bucket to the member account
+3. Provisions an AWS Lambda as a target of the CloudWatch Events Rule. 
+a.	The AWS Lambda runs a customized Athena query specific to MAP tagged resources in the member account.
+b.	The Athena query results for the MAP tagged resources in the member account are dropped in the output results S3 bucket.
+4. Provisions an AWS Glue Crawler in the member account that has cross account access to the output results S3 bucket in the payer account	
+a.	 The AWS Glue Crawler creates an Athena database and table in the member account. This enables member account owner to view and query data for MAP tagged resources specific to their account. 
+5.	Steps 1-4 above are fully automated in AWS CloudFormation. It is deployed with 1-click automation. It requires no AWS related configurations to be performed by the AWS administrator.
 
 
 ## Solution Design
@@ -24,22 +27,19 @@ Provides fully automated tracking to member account owners on both their spend a
 
 **Prerequisites**
 
-1.	Follow the step by step instructions in the CloudKnox documentation to set up and enable CloudKnox to securely collect AWS CloudTrail logs from your AWS account - https://docs.cloudknox.io/
+1.	Set up Athena integration for MAP based Cost and Usage Reports in the Payer Account as documented here - https://docs.aws.amazon.com/cur/latest/userguide/cur-query-athena.html
 
 
 **Setup** 
 
 2 step install:
 
-1.	Set up the custom AWS Config Rule to evaluate the CloudKnox PCI score for the IAM user
-	1.	Follow the Installation steps  of the AWS Config Rule Development Kit (RDK) to set up the prerequisites and install the AWS Config RDK - https://rdk.readthedocs.io/en/latest/getting_started.html#installation
-	2.	Download the custom AWS Config rule from the CLOUDKNOX_PCI.zip file provided in our GitHub repository
-	3.	Unzip the file above and go to the directory where your RDK Rule files have been unzipped.  For e.g. if the RDK rule folder is named CLOUDKNOX_PCI then cd to that folder
-	4.	Deploy the rule by following the deployment instructions as outlined in the RDK. 
+1.	Payer Account - Launch the **aws-map-spendvisibility.yml** templa.ymlte
+	1.	Provisions steps 1-3 described above in the 'How it Works section
 
-2.	Set up the AWS Config Remediation based continuous permissions rightsizing.
-	1. Launch the **aws-cloudknox-configremediation.yml** template.
-	2. Substitute the <AccountId> and <Region> with the AWS Account ID and AWS Region where you have deployed this template
+2.	Member Account - Launch the **aws-map-linkedaccountcrawler.yml** template
+	1. Provisions step 4 described above in the How it Works section
+
 
 
 
