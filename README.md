@@ -1,9 +1,9 @@
 <p align="center">
 </p>
 
-# Continuous permissions rightsizing to ensure least privileges in AWS using CloudKnox and AWS Config
+# Automating spend and credits tracking for member accounts in the AWS Migration Acceleration Program (MAP) 
 
-A Custom AWS Config Rule continuously monitors and evaluates the CloudKnox Privilege Creep Index (PCI) score for every AWS IAM user and triggers AWS Config Remediations to perform permissions rightsizing for users with high PCI scores
+Provides fully automated tracking to member account owners on both their spend and credits for their MAP tagged resources
 
 
 ## How it Works
@@ -18,7 +18,7 @@ A Custom AWS Config Rule continuously monitors and evaluates the CloudKnox Privi
 
 ## Solution Design
 
-![](images/CURAutomatedIngestionandUpdate.png)
+![](images/aws-map-spendvisibilty-member-arch.png)
 
 ## How To Install
 
@@ -26,17 +26,10 @@ A Custom AWS Config Rule continuously monitors and evaluates the CloudKnox Privi
 
 1.	Follow the step by step instructions in the CloudKnox documentation to set up and enable CloudKnox to securely collect AWS CloudTrail logs from your AWS account - https://docs.cloudknox.io/
 
-2.	Log in to the CloudKnox API Integrations console - https://api.cloudknox.io/integrations and click on Generate New Key. Make a note of the generated Access Key, Secret Key and Service Account ID.
-
-3.	Launch the **aws-cloudknox-prereq.yml** and enter the Access Key, Secret Key and the Service Account ID generated in the previous step. Accept all other default values for this template.
-
-4.	The **aws-cloudknox-prereq.yml** template creates an Amazon S3 bucket with the following name: s3-cloudknoxiamuserrightsize-<AccountId>-<Region>. The <AccountId> and <Region> default to the AWS Account ID and AWS Region where you have deployed this template.
-	1. Create a folder called ‘CloudKnox_IAMRightsize’ in this S3 bucket. 
-	2. Upload the CloudKnox_IAMRightsize.zip in this folder
 
 **Setup** 
 
-The solution automates the initial setup and deployment in two distinct steps:
+2 step install:
 
 1.	Set up the custom AWS Config Rule to evaluate the CloudKnox PCI score for the IAM user
 	1.	Follow the Installation steps  of the AWS Config Rule Development Kit (RDK) to set up the prerequisites and install the AWS Config RDK - https://rdk.readthedocs.io/en/latest/getting_started.html#installation
