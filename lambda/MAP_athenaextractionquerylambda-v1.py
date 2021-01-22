@@ -18,7 +18,7 @@ def lambda_handler(event, context):
     athena_output_location = os.environ['athena_output_location']
     
     #Check if output folder exists. If it doesn't exist then create an output folder. If it exists, then proceed to empty
-    #create_s3outputbucketfolder(s3outputbucketname, outputfolder)
+    create_s3outputbucketfolder(s3outputbucketname, outputfolder)
     
     # Empty the existing MAP query output bucket for linked accounts
     empty_s3outputbucket(s3outputbucketname, outputfolder)
@@ -52,13 +52,13 @@ def empty_s3outputbucket(s3outputbucketname, outputfolder):
             Bucket=s3outputbucketname,
             Prefix=outputfolder
     )
-    print("keycount in bucket to be deleted: " + str(response['KeyCount']) )
+    print("keycount in emptybucketfn: " + str(response['KeyCount']) )
     
     if (response['KeyCount'] > 0):
         s3objects = response['Contents']
         for s3object in s3objects:
             objectkey = s3object['Key']
-            print("delete object objectkey is: " + objectkey)
+            print("objectkey is: " + objectkey)
             response = client.delete_object(
                 Bucket=s3outputbucketname,
                 Key=objectkey

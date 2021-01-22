@@ -174,7 +174,7 @@ Resources:
           - !Ref payergluecrawlername
           state:
           - Succeeded
-      State: ENABLED
+      State: DISABLED
       Targets:
       - Arn: !GetAtt "MAPAthenaExtractionQueryLambda.Arn"
         Id: IDMAPAthenaExtractionQuery
@@ -197,8 +197,8 @@ Resources:
     Properties: 
       Name: PayerScheduledRule
       Description: "Payer Scheduled CWE Rule that triggers the MAPAthenaExtractionQuery Lambda"
-      State: "ENABLED"
-      ScheduleExpression: "rate(5 minutes)"
+      State: DISABLED
+      ScheduleExpression: "rate(4 minutes)"
       Targets:
       - Arn: !GetAtt "MAPAthenaExtractionQueryLambda.Arn"
         Id: IDMAPAthenaExtractionQuery
