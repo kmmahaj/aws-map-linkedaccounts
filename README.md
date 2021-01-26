@@ -1,7 +1,7 @@
 <p align="center">
 </p>
 
-# Automating spend tracking for AWS MAP member accounts
+# Automating custom cost and usage tracking for member accounts in the AWS MAP 
 
 Provides fully automated tracking to member account owners on both their spend and credits for their AWS MAP tagged resources
 
@@ -34,7 +34,7 @@ a.	 The AWS Glue Crawler creates an Athena database and table in the member acco
 
 2 step install:
 
-1.	Payer Account - Launch the **aws-map-spendvisibility.yml** template
+1.	Payer Account - Launch the **aws-map-payeraccountsetup.yml** template
 	1.	Provisions steps 1-3 described above in the 'How it Works section
 
 2.	Member Account - Launch the **aws-map-linkedaccountcrawler.yml** template
